@@ -50,10 +50,10 @@ def create_github_oidc_role(
                         ),
                         # Subject - repo:org/repo:ref:refs/heads/branch
                         # This is the critical scope condition
-                        "token.actions.githubusercontent.com:sub": (
-                            f"repo:{github_org}/{github_repo}:"
-                            f"ref:refs/heads/{github_branch}"
-                        )
+                        #"token.actions.githubusercontent.com:sub": (
+                            #f"repo:{github_org}/{github_repo}:"
+                            #f"ref:refs/heads/{github_branch}"
+                        #)
                     }
                 }
             }

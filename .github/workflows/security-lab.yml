@@ -1,0 +1,46 @@
+name: Security Lab - OIDC Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write   # Required for OIDC - without this the token is not issued
+  contents: read
+
+jobs:
+  test-oidc:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+          # No access-key-id or secret-access-key here
+          # That is the point - credentials come from OIDC token exchange
+      
+      - name: Verify identity
+        run: |
+          # This shows you the assumed role identity
+          aws sts get-caller-identity
+          
+          # This shows the temporary credentials
+          # Note: they expire in 1 hour by default
+          echo "Session expires in 1 hour"
+          echo "No persistent credentials exist"
+      
+      - name: Test minimum permissions
+        run: |
+          # Test what this role can actually do
+          aws s3 ls || echo "No S3 access"
+          aws iam list-users || echo "No IAM read access"
+          
+          # Document what worked and what didn't
+          # This is your least privilege verification

@@ -20,6 +20,9 @@ An incorrect thumbprint breaks the trust chain and causes all
 federated authentication requests to fail.
 
 
+The sub condition restricts role assumption to a specific GitHub repository and branch, preventing other repositories from obtaining AWS credentials. StringEquals is used instead of StringLike to eliminate wildcard-based trust expansion and minimize blast radius. The aud condition ensures the OIDC token was specifically issued for AWS STS, preventing token reuse or confused-deputy scenarios where a token intended for another service is accepted by AWS.
+
+
 # Failure Log: Broad OIDC Trust Policy
 
 ## Failure Scenario

@@ -167,3 +167,93 @@ CloudTrail monitoring acts as a secondary detective control for identifying unex
 * OIDC trust policies should explicitly bind trust to repository and branch.
 * CloudTrail detects abuse after credentials are issued, not before.
 * Prevention at the trust boundary is more effective than relying on post-event detection.
+
+
+## You fixed the exploit by scoping the sub condition. What trade-off did you accept by scoping it to refs/heads/main only — and what is the residual risk you're monitoring for?  
+
+
+This is exactly the kind of question a build-focused interviewer asks because there is no single "correct" answer. They want to see whether you think in terms of **security vs operational flexibility**.
+
+A strong answer would be:
+
+> I scoped the OIDC trust policy to `refs/heads/main` using the `sub` claim:
+>
+> ```text
+> repo:my-org/my-repo:ref:refs/heads/main
+> ```
+>
+> The security benefit is that only workflows running from the main branch can obtain AWS credentials. A compromised feature branch, fork, or developer experimentation branch cannot directly assume the production role.
+>
+> The trade-off is reduced deployment flexibility. Feature branches, release branches, hotfix branches, and pull request workflows can no longer use that role. Any workflow outside `main` receives an `AccessDenied` during `AssumeRoleWithWebIdentity`.
+>
+> To support those workflows safely, I would create separate roles with narrower permissions and different trust conditions rather than broadening the production role.
+
+---
+
+### Residual Risk
+
+Even after fixing the exploit, risk is not zero.
+
+The main residual risk is:
+
+> If an attacker can execute arbitrary GitHub Actions code on the trusted `main` branch, they can still obtain a valid OIDC token and assume the role because the trust policy conditions are satisfied.
+
+Examples:
+
+* Malicious commit merged into `main`
+* Compromised maintainer account
+* Unsafe workflow execution on `main`
+* Supply chain compromise in a third-party GitHub Action
+* Secrets exposure that enables unauthorized code execution in the workflow
+
+The trust policy confirms:
+
+```text
+This workflow came from the correct repo and branch.
+```
+
+It does **not** confirm:
+
+```text
+The workflow itself is trustworthy.
+```
+
+---
+
+### What I Would Monitor
+
+CloudTrail:
+
+```text
+AssumeRoleWithWebIdentity
+```
+
+Monitor for:
+
+* Unexpected repository names
+* Unexpected branch references
+* Unusual session names
+* Unusual timestamps
+* Large spikes in role assumptions
+* Assumptions followed by sensitive API activity
+
+GitHub:
+
+* Direct pushes to `main`
+* Changes to workflow files under `.github/workflows/`
+* New third-party Actions introduced
+* Privileged workflow permission changes
+
+---
+
+### Interview-Level Answer
+
+> By scoping the `sub` claim to `refs/heads/main`, I accepted a reduction in deployment flexibility in exchange for a smaller trust boundary. Feature branches and PR workflows can no longer use the production role. The residual risk is that a workflow running legitimately on `main` can still be malicious if an attacker gains code execution on that branch. Therefore, I monitor `AssumeRoleWithWebIdentity` events, workflow changes, and privileged activity after role assumption because OIDC validates repository identity, not workflow intent.
+
+That's a strong product-company answer because it demonstrates:
+
+1. Understanding of the security control.
+2. Awareness of operational impact.
+3. Recognition that the control reduces risk rather than eliminating it.
+4. Monitoring and detection thinking, not just prevention.
+

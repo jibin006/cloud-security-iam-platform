@@ -477,7 +477,7 @@ So the assume succeeds.
 
 ---
 
-# Now Add ExternalId
+## Now Add ExternalId
 
 Customer A configures:
 

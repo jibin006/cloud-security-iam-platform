@@ -737,13 +737,13 @@ The second path is already blocked by the trust policy. The confused deputy atta
 This is the difference between knowing what ExternalId does and understanding the assumptions required for it to work.
 
 Your earlier mental model was:
-
+```text
 ExternalId exists
     ↓
 Attack blocked
-
+```
 The more accurate model is:
-
+```text
 ExternalId exists
 AND
 Vendor correctly binds customer → ExternalId mapping
@@ -751,9 +751,9 @@ AND
 Customer cannot influence ExternalId value
     ↓
 Attack blocked
-
+```
 If any of those assumptions fail:
-
+```text
 Customer B
     ↓
 Supplies RoleArn = CustomerA
@@ -764,25 +764,25 @@ Vendor forwards both to STS
 Trust policy satisfied
     ↓
 AssumeRole succeeds
-
+```
 The control collapses.
 
 This is why ExternalId is fundamentally different from something like:
-
+```text
 IAM Principal ARN
 MFA
 Digital Signature
-
+```
 Those are verified by AWS itself.
 
 ExternalId is only a string comparison:
-
+```text
 {
   "StringEquals": {
     "sts:ExternalId": "customer-a-12345"
   }
 }
-
+```
 AWS does not know:
 
 who generated it
@@ -792,9 +792,9 @@ whether the vendor got it from a database lookup
 whether the customer typed it into an API request
 
 AWS only knows:
-
+```text
 Expected value == Presented value ?
-
+```
 A senior-level answer would be:
 
 ExternalId mitigates confused deputy by allowing the role owner to require customer-specific context during AssumeRole. However, its effectiveness depends on the vendor enforcing the customer-to-external-ID mapping server-side. If customers can supply arbitrary ExternalId values, an attacker who learns another customer's ExternalId can cause the vendor to present the correct context and bypass the protection. Therefore, ExternalId is a trust-boundary control, not a cryptographic secret.

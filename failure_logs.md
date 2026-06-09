@@ -786,9 +786,13 @@ ExternalId is only a string comparison:
 AWS does not know:
 
 who generated it
+
 whether it is secret
+
 whether it was leaked
+
 whether the vendor got it from a database lookup
+
 whether the customer typed it into an API request
 
 AWS only knows:

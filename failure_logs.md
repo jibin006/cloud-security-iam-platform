@@ -823,13 +823,33 @@ Wrong ExternalId
     ↓
 AccessDenied
 ```
+```text
+/Python312/python.exe "c:/Users/jibin/iam drift/Policyascode/cloud-security-iam-platform/cross_account_roles.py"
+Created role: arn:aws:iam::668798317441:role/CrossAccountSecurityAudit
+=== CONFUSED DEPUTY DEMONSTRATION ===
+
+Attempt 1: Without external ID (should fail)
+CORRECT: Role assumption rejected without external ID
+Error: User: arn:aws:sts::980819806161:assumed-role/AWSReservedSSO_AdministratorAccess_12ab461fee5a8769/jibin is not authorized to perform: sts:AssumeRole on resource: arn:aws:iam::668798317441:role/CrossAccountSecurityAudit
+
+Attempt 2: Wrong external ID (should fail)
+CORRECT: Role assumption rejected with wrong external ID
+Error: User: arn:aws:sts::980819806161:assumed-role/AWSReservedSSO_AdministratorAccess_12ab461fee5a8769/jibin is not authorized to perform: sts:AssumeRole on resource: arn:aws:iam::668798317441:role/CrossAccountSecurityAudit
+
+Conclusion: External ID prevents confused deputy attack
+The external ID is a shared secret between you and the trusted principal
+A third-party cannot assume your role on behalf of an attacker
+PS C:\Users\jibin\iam drift\Policyascode\cloud-security-iam-platform> 
+
+```
 AWS required BOTH:
 ```text
 Principal = Account X
 AND
 ExternalId = security-lab-2026
-Vulnerable Trust Policy (without ExternalId)
 ```
+Vulnerable Trust Policy (without ExternalId)
+
 Results:
 ```text
 Without ExternalId
@@ -839,6 +859,21 @@ SUCCESS
 Wrong ExternalId
     ↓
 SUCCESS
+```
+```text
+PS C:\Users\jibin\iam drift\Policyascode\cloud-security-iam-platform> & C:/Users/jibinb/AppData/Local/Programs/Python/Python312/python.exe "c:/Users/jilub/iam drift/Policyascode/cloud-security-iam-platform/cross_account_roles.py"
+Created role: arn:aws:iam::668798317441:role/CrossAccountSecurityAudit
+=== CONFUSED DEPUTY DEMONSTRATION ===
+
+Attempt 1: Without external ID (should fail)
+ERROR: Role assumed WITHOUT external ID - trust policy is misconfigured
+
+Attempt 2: Wrong external ID (should fail)
+ERROR: Role assumed with WRONG external ID - trust policy is misconfigured
+
+Conclusion: External ID prevents confused deputy attack
+The external ID is a shared secret between you and the trusted principal
+A third-party cannot assume your role on behalf of an attacker
 ```
 This is the important observation.
 

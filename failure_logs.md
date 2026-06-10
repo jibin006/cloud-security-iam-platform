@@ -1088,3 +1088,136 @@ That's the heart of the confused deputy problem.
 > The blast radius is that any principal operating within the trusted security account and capable of calling AssumeRole can obtain the permissions attached to the role. In this lab, the role had the AWS managed SecurityAudit policy attached, providing broad read access across IAM, EC2, VPC, S3, CloudTrail, Lambda, RDS, and other services. In a real multi-tenant vendor scenario, this enables a confused deputy attack where one customer can cause the vendor to access another customer's environment because the trust policy validates who is calling but not which customer relationship the call is associated with.
 
 That's the level of answer that signals genuine understanding rather than memorization.
+
+
+This is a classic follow-up designed to see whether you understand the **limitations** of ExternalId rather than just its purpose.
+
+Your answer should be something like this:
+
+---
+
+### Where do I store the ExternalId?
+
+In a real system, the ExternalId should be stored **server-side by the trusted vendor/service**, bound to the customer relationship.
+
+Example:
+
+```text
+Customer A
+    ↓
+Customer Record
+    ↓
+ExternalId = customer-a-12345
+```
+
+```text
+Customer B
+    ↓
+Customer Record
+    ↓
+ExternalId = customer-b-99999
+```
+
+The customer should never provide the ExternalId on each request.
+
+Instead:
+
+```text
+Customer B requests scan
+        ↓
+Vendor looks up Customer B
+        ↓
+Vendor retrieves customer-b-99999
+        ↓
+Vendor calls AssumeRole
+```
+
+The ExternalId must come from the vendor's trusted datastore, not from customer input.
+
+Possible storage locations:
+
+* DynamoDB
+* RDS
+* Encrypted Secrets Manager entry
+* Vendor configuration database
+
+The important point is:
+
+```text
+Customer Identity
+        ↓
+Server-side Lookup
+        ↓
+ExternalId
+```
+
+not:
+
+```text
+Customer Request
+        ↓
+ExternalId
+```
+
+---
+
+### What happens if the ExternalId leaks?
+
+This is where many people answer incorrectly.
+
+Weak answer:
+
+> If it leaks, attacker gets access.
+
+That's not automatically true.
+
+The attacker still needs:
+
+```text
+1. Role ARN
+2. Trusted principal relationship
+3. Ability to cause the trusted vendor/account to call AssumeRole
+4. Correct ExternalId
+```
+
+ExternalId alone is not sufficient.
+
+---
+
+### Security Posture Impact
+
+The correct answer:
+
+> ExternalId is a trust-context control, not a cryptographic authentication mechanism. If it leaks, the protection is weakened because an attacker who can influence the trusted principal may now be able to supply the correct customer context. However, the attacker still cannot directly assume the role unless they are the trusted principal or can cause the trusted principal to make the AssumeRole call.
+
+---
+
+### Residual Risk
+
+The real risk after leakage is:
+
+```text
+Attacker
+    ↓
+Knows Customer A ExternalId
+    ↓
+Can influence Vendor
+    ↓
+Vendor presents correct ExternalId
+    ↓
+AssumeRole succeeds
+```
+
+This is why a leaked ExternalId reduces security.
+
+---
+
+### Interview-Level Answer
+
+> I would store the ExternalId server-side in the vendor's customer configuration store and bind it to the customer relationship. Customers should never be allowed to provide arbitrary ExternalId values in requests. If the ExternalId leaks, the role is not immediately compromised because the trust policy still only trusts the vendor account. However, the security posture is weakened because an attacker who can influence the trusted vendor can now present the correct customer context and potentially bypass the confused deputy protection. ExternalId should therefore be treated as sensitive customer configuration rather than as a primary authentication secret.
+
+That's the answer I'd expect from a build-focused Cloud Security Engineer because it recognizes both:
+
+1. **What ExternalId protects against.**
+2. **What ExternalId does not protect against.**
+

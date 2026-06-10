@@ -1,0 +1,44 @@
+Attack: Confused Deputy
+
+Malicious Payload:
+
+{
+  "team_name":"attacker",
+  "service_name":"exfil",
+  "requested_actions":["s3:GetObject"],
+  "trust_service":"arn:aws:iam::999999999999:root"
+}
+
+Lambda Response:
+
+{
+  "errorMessage": "Unapproved trust principal: arn:aws:iam::999999999999:root",
+  "errorType": "ValueError"
+}
+
+Verification:
+
+aws iam get-role \
+  --role-name vended-attacker-exfil \
+  --profile security-development
+
+Result:
+
+An error occurred (NoSuchEntity) when calling the GetRole operation:
+The role with name vended-attacker-exfil cannot be found.
+
+Control Fired:
+
+validate_trust_principal()
+
+Security Property Proven:
+
+External AWS accounts cannot be inserted into trust policies.
+
+Impact Without Control:
+
+Attacker could create a role trusted by an external AWS account and allow external principals to assume it.
+
+Conclusion:
+
+Confused deputy attack blocked before any IAM API call occurred.

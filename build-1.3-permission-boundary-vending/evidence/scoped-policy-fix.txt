@@ -1,0 +1,73 @@
+Attack Surface Reduction: Lambda Execution Role
+
+Initial State:
+
+VendingMachineLambdaRole attached policies:
+
+- IAMFullAccess
+- AWSLambdaBasicExecutionRole
+
+Risk:
+
+Compromise of Lambda execution role would provide unrestricted IAM access.
+
+Remediation:
+
+Created:
+arn:aws:iam::668798317441:policy/VendingMachineScopedPolicy
+
+Removed broad IAM permissions.
+
+----------------------------------------------------
+
+Validation Attempt #1
+
+Result:
+
+AccessDenied
+
+User:
+arn:aws:sts::668798317441:assumed-role/VendingMachineLambdaRole/permission-boundary-vending-machine
+
+not authorized to perform:
+
+iam:GetPolicy
+
+Outcome:
+
+Scoped policy too restrictive.
+
+----------------------------------------------------
+
+Fix
+
+Updated policy version:
+
+VendingMachineScopedPolicy v2
+
+Added:
+
+iam:GetPolicy
+
+----------------------------------------------------
+
+Validation Attempt #2
+
+Lambda Response:
+
+{
+  "statusCode": 200,
+  "body": {
+    "role_name": "vended-platform-api",
+    "role_arn": "arn:aws:iam::668798317441:role/vended-platform-api",
+    "boundary": "arn:aws:iam::668798317441:policy/SecurityBoundary-DoNotDelete"
+  }
+}
+
+Outcome:
+
+Least-privilege policy successful.
+
+Security Property Proven:
+
+Lambda can vend roles successfully without IAMFullAccess.

@@ -804,5 +804,119 @@ A senior-level answer would be:
 ExternalId mitigates confused deputy by allowing the role owner to require customer-specific context during AssumeRole. However, its effectiveness depends on the vendor enforcing the customer-to-external-ID mapping server-side. If customers can supply arbitrary ExternalId values, an attacker who learns another customer's ExternalId can cause the vendor to present the correct context and bypass the protection. Therefore, ExternalId is a trust-boundary control, not a cryptographic secret.
 
 Notice how that answer is about system design assumptions, not IAM syntax.
-
 That's exactly the level where build-focused Cloud Security interviews operate.
+
+
+## I tested AssumeRole both without an ExternalId and with an incorrect ExternalId.
+In both cases STS returned the same AccessDenied error: "not authorized to perform sts:AssumeRole". AWS did not indicate which trust policy condition failed. By inspecting the trust policy and the caller ARN, I determined the trusted principal requirement was satisfied and the failure occurred during evaluation of the sts:ExternalId condition. This demonstrates that AWS intentionally returns generic authorization failures rather than exposing trust policy details.
+
+
+Secure Trust Policy (with ExternalId)
+
+Results:
+```text
+Without ExternalId
+    ↓
+AccessDenied
+
+Wrong ExternalId
+    ↓
+AccessDenied
+```
+AWS required BOTH:
+```text
+Principal = Account X
+AND
+ExternalId = security-lab-2026
+Vulnerable Trust Policy (without ExternalId)
+```
+Results:
+```text
+Without ExternalId
+    ↓
+SUCCESS
+
+Wrong ExternalId
+    ↓
+SUCCESS
+```
+This is the important observation.
+
+The wrong ExternalId didn't fail.
+
+Why?
+
+Because AWS isn't evaluating ExternalId anymore.
+
+The trust policy now says:
+```text
+{
+  "Principal": {
+    "AWS": "arn:aws:iam::980819806161:root"
+  },
+  "Action": "sts:AssumeRole"
+}
+```
+AWS only checks:
+```text
+Is caller from Account 980819806161?
+```
+Answer:
+```text
+Yes
+```
+So AssumeRole succeeds.
+
+Interview Story
+
+If I asked:
+
+Show me evidence that ExternalId actually mattered.
+
+A strong answer is:
+
+I first tested a trust policy requiring sts:ExternalId. AssumeRole failed both when the ExternalId was omitted and when it was incorrect. I then removed the ExternalId condition from the deployed trust policy and reran the same tests. Both assumptions succeeded. This demonstrated that principal validation alone was insufficient and that the ExternalId was the control preventing a trusted third party from being tricked into assuming the role on behalf of another customer.
+
+That's much stronger than:
+
+ExternalId prevents confused deputy.
+
+because you have evidence.
+
+What You Should Add To failure_logs.md
+Failure 3 — Confused Deputy
+
+Misconfiguration
+```text
+Trust policy trusted Account X root
+No sts:ExternalId condition
+```
+Observed Behavior
+```text
+AssumeRole succeeded without ExternalId
+AssumeRole succeeded with arbitrary ExternalId
+```
+Root Cause
+```text
+Trust policy validated only the caller identity.
+It did not validate customer context.
+```
+Blast Radius
+```text
+Any principal operating within the trusted vendor account
+could assume the role.
+
+A multi-tenant vendor could be tricked into accessing
+Customer A resources on behalf of Customer B.
+```
+Fix
+```text
+Require sts:ExternalId in trust policy.
+Bind ExternalId to customer relationship server-side.
+Do not allow customers to provide arbitrary ExternalId values.
+```
+Residual Risk
+```text
+If the vendor allows customer-controlled ExternalIds
+or Account X is compromised, the protection can be bypassed.
+```

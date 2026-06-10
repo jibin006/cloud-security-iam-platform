@@ -1465,3 +1465,6 @@ Specific trusted customer context
 ## Lessons Learned
 
 Trusting an AWS account root in a cross-account trust policy is broader than it appears. The trust relationship includes all eligible principals in that account, not just the intended service. Account-root trust creates an account-wide blast radius. Role-scoped trust combined with ExternalId significantly reduces exposure by constraining both the trusted workload and the customer context under which it operates.
+
+## Permission boundaries
+Permission boundaries are not a complete containment mechanism. If your threat model assumes "developers can never access X because of the boundary," you must also audit S3 bucket policies, KMS key policies, Lambda resource policies, SQS policies, SNS policies, etc. Otherwise you may leave a privilege path open that completely bypasses your boundary design.

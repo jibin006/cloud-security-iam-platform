@@ -1,0 +1,25 @@
+Verification: Boundary Attached At Creation
+
+Command:
+
+aws iam get-role \
+  --role-name vended-platform-api \
+  --profile security-development
+
+Expected Evidence:
+
+PermissionsBoundary:
+arn:aws:iam::668798317441:policy/SecurityBoundary-DoNotDelete
+
+Lambda Success Response:
+
+{
+  "role_name": "vended-platform-api",
+  "role_arn": "arn:aws:iam::668798317441:role/vended-platform-api",
+  "boundary": "arn:aws:iam::668798317441:policy/SecurityBoundary-DoNotDelete"
+}
+
+Security Property Proven:
+
+Role is created with boundary attached.
+No gap exists between role creation and boundary enforcement.

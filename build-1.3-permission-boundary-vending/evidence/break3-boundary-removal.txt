@@ -1,0 +1,73 @@
+Attack: Boundary Self-Removal and Privilege Escalation
+
+Assumed Role:
+
+arn:aws:sts::668798317441:assumed-role/boundary-break-test-role/boundary-break-test
+
+Verification:
+
+aws sts get-caller-identity
+
+Result:
+
+Arn:
+arn:aws:sts::668798317441:assumed-role/boundary-break-test-role/boundary-break-test
+
+Attack #1:
+
+aws iam delete-role-permissions-boundary \
+  --role-name boundary-break-test-role
+
+Result:
+
+AccessDenied
+
+because no identity-based policy allows
+iam:DeleteRolePermissionsBoundary
+
+Control Fired:
+
+Implicit Deny
+
+----------------------------------------------------
+
+Attack #2:
+
+aws iam attach-role-policy \
+  --role-name boundary-break-test-role \
+  --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+
+Result:
+
+AccessDenied
+
+with an explicit deny in a permissions boundary:
+arn:aws:iam::668798317441:policy/SecurityBoundary-DoNotDelete
+
+Control Fired:
+
+Permission Boundary
+
+Policy Statement:
+
+{
+  "Sid": "DenyPrivilegeEscalation",
+  "Effect": "Deny",
+  "Action": [
+    "iam:AttachRolePolicy"
+  ]
+}
+
+Impact Without Control:
+
+Attacker could:
+1. Attach AdministratorAccess
+2. Escalate privileges
+3. Create additional privileged identities
+4. Establish persistence
+
+Conclusion:
+
+Demonstrated both:
+- Implicit deny
+- Explicit deny via permission boundary

@@ -1,1 +1,44 @@
 
+Attack: Direct IAM Bypass
+
+Objective:
+Create a role directly without using the vending machine.
+
+Command:
+
+aws iam create-role \
+  --role-name scp-bypass-test \
+  --assume-role-policy-document file://trust.json \
+  --profile security-development
+
+Result:
+
+SUCCESS
+
+Role created:
+arn:aws:iam::668798317441:role/scp-bypass-test
+
+Control Fired:
+
+None
+
+Evidence:
+
+Organization policy inspection showed only:
+FullAWSAccess
+
+No SCP denying iam:CreateRole was attached.
+
+Impact Without Control:
+
+Developer could:
+1. Create arbitrary role
+2. Attach AdministratorAccess
+3. Trust their own principal
+4. Assume role
+5. Gain administrative access
+
+Conclusion:
+
+Direct IAM bypass succeeded.
+SCP enforcement was not active at test time.

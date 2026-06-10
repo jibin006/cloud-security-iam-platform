@@ -1,0 +1,24 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowBasicOperations",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "logs:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyIAMPrivilegeEscalation",
+      "Effect": "Deny",
+      "Action": [
+        "iam:*",
+        "organizations:*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

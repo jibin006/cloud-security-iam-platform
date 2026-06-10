@@ -1,0 +1,1 @@
+{"statusCode": 200, "body": "{\"role_name\": \"vended-platform-api\", \"role_arn\": \"arn:aws:iam::668798317441:role/vended-platform-api\", \"boundary\": \"arn:aws:iam::668798317441:policy/SecurityBoundary-DoNotDelete\"}"}

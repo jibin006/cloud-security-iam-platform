@@ -1,0 +1,8 @@
+{
+  "team_name": "platform",
+  "service_name": "api",
+  "actions": [
+    "s3:GetObject"
+  ],
+  "trust_service": "arn:aws:iam::999999999999:root"
+}

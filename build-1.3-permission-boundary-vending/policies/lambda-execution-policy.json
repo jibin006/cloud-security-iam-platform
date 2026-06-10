@@ -1,0 +1,34 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CreateRoleWithBoundaryOnly",
+      "Effect": "Allow",
+      "Action": "iam:CreateRole",
+      "Resource": "arn:aws:iam::668798317441:role/vended-*",
+      "Condition": {
+        "StringEquals": {
+          "iam:PermissionsBoundary": "arn:aws:iam::668798317441:policy/SecurityBoundary-DoNotDelete"
+        }
+      }
+    },
+    {
+      "Sid": "CreateAndAttachVendedPolicies",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreatePolicy",
+        "iam:AttachRolePolicy"
+      ],
+      "Resource": "arn:aws:iam::668798317441:*"
+    },
+    {
+      "Sid": "GetBoundaryPolicy",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetPolicy",
+        "iam:TagRole"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

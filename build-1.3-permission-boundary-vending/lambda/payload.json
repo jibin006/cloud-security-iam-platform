@@ -1,0 +1,1 @@
+﻿{"team_name":"attacker","service_name":"exfil","requested_actions":["s3:GetObject"],"trust_service":"arn:aws:iam::999999999999:root"}

@@ -1,0 +1,1 @@
+﻿{"team_name":"platform","service_name":"api","requested_actions":["s3:GetObject","logs:PutLogEvents"],"trust_service":"lambda.amazonaws.com"}

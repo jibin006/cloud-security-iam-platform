@@ -1221,3 +1221,247 @@ That's the answer I'd expect from a build-focused Cloud Security Engineer becaus
 1. **What ExternalId protects against.**
 2. **What ExternalId does not protect against.**
 
+
+
+## Failure 03 – Account-Root Trust in Cross-Account Role
+
+## Objective
+
+Demonstrate why trusting an entire AWS account (`:root`) in a cross-account trust policy creates unnecessary blast radius and how role-scoped trust reduces exposure.
+
+---
+
+## Initial Configuration
+
+Trust policy:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::980819806161:root"
+      },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "sts:ExternalId": "security-lab-2026"
+        }
+      }
+    }
+  ]
+}
+```
+
+Assumption at design time:
+
+```text
+Only the intended security scanner will assume this role.
+```
+
+Actual trust scope:
+
+```text
+Entire AWS Account 980819806161
+```
+
+---
+
+## Observed Behavior
+
+AWS interprets:
+
+```text
+arn:aws:iam::980819806161:root
+```
+
+as:
+
+```text
+Any principal in Account 980819806161
+```
+
+that can satisfy the trust conditions.
+
+The trust relationship does not distinguish between:
+
+* SecurityScanner role
+* Administrator role
+* Automation role
+* CI/CD role
+* Future roles created in the account
+* Compromised workloads operating under trusted principals
+
+The role trusts the account boundary, not the intended workload.
+
+---
+
+## Security Impact
+
+The blast radius expanded from:
+
+```text
+One intended security service
+```
+
+to:
+
+```text
+Every principal capable of reaching sts:AssumeRole
+inside the trusted account
+```
+
+If the security tooling account is compromised:
+
+```text
+Attacker
+    ↓
+Compromised Principal in Security Account
+    ↓
+AssumeRole
+    ↓
+Workload Account
+```
+
+The attacker inherits whatever permissions are attached to the cross-account role.
+
+In this lab:
+
+```text
+AWS Managed SecurityAudit
+```
+
+Resulting access included:
+
+* IAM configuration visibility
+* EC2 visibility
+* VPC visibility
+* Security Group visibility
+* CloudTrail visibility
+* Lambda visibility
+* RDS visibility
+* Resource enumeration across the account
+
+---
+
+## Root Cause
+
+The trust policy answered:
+
+```text
+Which account do I trust?
+```
+
+instead of:
+
+```text
+Which specific workload do I trust?
+```
+
+Trust was granted at the account level rather than the service boundary.
+
+This violated the principle of least privilege at the trust layer.
+
+---
+
+## Detection Opportunities
+
+Monitor CloudTrail for:
+
+```text
+eventSource = sts.amazonaws.com
+eventName   = AssumeRole
+```
+
+Specifically:
+
+* Unexpected principals assuming the role
+* New principals from the trusted account appearing
+* Session names inconsistent with the expected scanner workload
+* Sudden increases in AssumeRole activity
+
+---
+
+## Remediation Applied
+
+Replaced account-root trust:
+
+```json
+{
+  "Principal": {
+    "AWS": "arn:aws:iam::980819806161:root"
+  }
+}
+```
+
+with role-scoped trust:
+
+```json
+{
+  "Principal": {
+    "AWS": "arn:aws:iam::980819806161:role/SecurityScanner"
+  }
+}
+```
+
+ExternalId enforcement was retained:
+
+```json
+{
+  "Condition": {
+    "StringEquals": {
+      "sts:ExternalId": "security-lab-2026"
+    }
+  }
+}
+```
+
+---
+
+## Why This Fix Works
+
+Role-scoped trust narrows:
+
+```text
+WHO can enter
+```
+
+from:
+
+```text
+Entire Security Account
+```
+
+to:
+
+```text
+One explicitly approved role
+```
+
+ExternalId continues to validate:
+
+```text
+WHY they are entering
+```
+
+by enforcing customer-specific context.
+
+Together they provide:
+
+```text
+Role Trust
+    ↓
+Specific trusted workload
+
+ExternalId
+    ↓
+Specific trusted customer context
+```
+
+---
+
+## Lessons Learned
+
+Trusting an AWS account root in a cross-account trust policy is broader than it appears. The trust relationship includes all eligible principals in that account, not just the intended service. Account-root trust creates an account-wide blast radius. Role-scoped trust combined with ExternalId significantly reduces exposure by constraining both the trusted workload and the customer context under which it operates.

@@ -1,6 +1,7 @@
 # create_oidc_role.py
 import boto3
 import json
+import os
 
 def create_github_oidc_role(
     account_id: str,
@@ -91,9 +92,17 @@ def create_github_oidc_role(
         return role_arn
         
     except iam.exceptions.EntityAlreadyExistsException:
-        print(f"Role {role_name} already exists")
         role = iam.get_role(RoleName=role_name)
-        return role['Role']['Arn']
+        existing_trust = role["Role"].get("AssumeRolePolicyDocument", {})
+        if isinstance(existing_trust, str):
+            existing_trust = json.loads(existing_trust)
+        if existing_trust != trust_policy:
+            raise RuntimeError(
+                f"Role {role_name} already exists with a different trust policy. "
+                "Refusing to treat the existing role as securely configured."
+            )
+        print(f"Role {role_name} already exists with the expected trust policy")
+        return role["Role"]["Arn"]
 
 
 def test_trust_policy_scope(
@@ -142,19 +151,19 @@ def test_trust_policy_scope(
 
 
 if __name__ == "__main__":
-    # Replace with your values
-    ACCOUNT_ID = "668798317441"
-    GITHUB_ORG = "jibin006"
-    GITHUB_REPO = "cloud-security-iam-platform"
-    GITHUB_BRANCH = "main"
-    
+    required = ("AWS_ACCOUNT_ID", "GITHUB_ORG", "GITHUB_REPO")
+    missing = [name for name in required if not os.environ.get(name)]
+    if missing:
+        raise SystemExit(
+            "Missing required environment variables: " + ", ".join(missing)
+        )
+
     role_arn = create_github_oidc_role(
-        account_id=ACCOUNT_ID,
-        github_org=GITHUB_ORG,
-        github_repo=GITHUB_REPO,
-        github_branch=GITHUB_BRANCH,
-        role_name="github-actions-security-lab",
-        profile_name="security-development"
+        account_id=os.environ["AWS_ACCOUNT_ID"],
+        github_org=os.environ["GITHUB_ORG"],
+        github_repo=os.environ["GITHUB_REPO"],
+        github_branch=os.environ.get("GITHUB_BRANCH", "main"),
+        role_name=os.environ.get("OIDC_ROLE_NAME", "github-actions-security-lab"),
+        profile_name=os.environ.get("AWS_PROFILE", "security-development"),
     )
-    
-    print(f"\nRole ARN to use in GitHub Actions: {role_arn}")
+    print(f"\\nRole ARN to use in GitHub Actions: {role_arn}")

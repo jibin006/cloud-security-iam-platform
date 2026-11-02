@@ -3,16 +3,17 @@ name: Security Lab - OIDC Test
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 permissions:
-  id-token: write   # Required for OIDC - without this the token is not issued
   contents: read
 
 jobs:
   test-oidc:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     
     steps:
       - name: Checkout

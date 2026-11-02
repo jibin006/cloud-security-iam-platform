@@ -4,12 +4,12 @@
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::980819806161:root"
+        "AWS": "arn:aws:iam::111122223333:root"
       },
       "Action": "sts:AssumeRole",
       "Condition": {
         "StringEquals": {
-          "sts:ExternalId": "security-lab-2026"
+          "sts:ExternalId": "replace-with-unique-external-id"
         }
       }
     }

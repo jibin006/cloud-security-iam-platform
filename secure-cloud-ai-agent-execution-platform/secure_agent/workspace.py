@@ -50,7 +50,13 @@ class Workspace:
         path = self._validate_relative_path(relative_path)
         if not path.parts or path.parts[0] not in roots:
             raise WorkspaceDenied(f"Path is outside approved roots: {relative_path}")
-        target = (self.root / Path(*path.parts)).resolve(strict=False)
+        lexical_target = self.root / Path(*path.parts)
+        current = self.root
+        for part in path.parts:
+            current = current / part
+            if current.is_symlink():
+                raise WorkspaceDenied("Symlink paths are not supported in the workspace")
+        target = lexical_target.resolve(strict=False)
         try:
             target.relative_to(self.root)
         except ValueError as exc:

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import pytest
+
 from secure_agent.stdio_mcp_server import (
+    MCPProtocolError,
     PROTOCOL_VERSION,
     PROTOCOL_VERSION_META_KEY,
     handle_request,
@@ -15,13 +18,15 @@ def test_server_discover_advertises_stateless_protocol(gateway, issue_agent_toke
     response = handle_request(gateway, issue_agent_token(), request("server/discover", {}))
     result = response["result"]
     assert result["resultType"] == "complete"
+    assert result["ttlMs"] == 30_000
+    assert result["cacheScope"] == "private"
     assert PROTOCOL_VERSION in result["protocolVersions"]
     assert result["serverInfo"]["name"] == "secure-agent-mcp-gateway"
 
 
 def test_tools_list_requires_version_metadata(gateway, issue_agent_token):
-    response = handle_request(gateway, issue_agent_token(), request("tools/list", {}))
-    assert response["error"]["code"] == -32600
+    with pytest.raises(MCPProtocolError, match="protocol version"):
+        handle_request(gateway, issue_agent_token(), request("tools/list", {}))
 
 
 def test_tools_list_returns_cacheable_identity_filtered_result(gateway, issue_agent_token):

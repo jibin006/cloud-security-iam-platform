@@ -79,7 +79,6 @@ class MCPGateway:
         tool_name: str,
         arguments: dict[str, Any],
         *,
-        estimated_tokens: int = 0,
         request_id: str | None = None,
     ) -> dict[str, Any]:
         call_id = request_id or str(uuid.uuid4())
@@ -90,7 +89,14 @@ class MCPGateway:
             if self._containment.is_suspended(subject):
                 raise AuthorizationError("Agent identity is suspended")
             self._policy.authorize(identity, tool_name, arguments)
-            self._budget.reserve(subject, estimated_tokens)
+            # Never accept caller-reported token usage. Derive a deterministic input
+            # charge from the canonical argument payload; the trusted inference router
+            # must separately reconcile provider-reported model token usage.
+            encoded_arguments = json.dumps(
+                arguments, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8")
+            estimated_input_units = max(1, (len(encoded_arguments) + 3) // 4)
+            self._budget.reserve(subject, estimated_input_units)
             result = self._execute(tool_name, arguments, identity.subject)
             self._audit.append(
                 subject=subject,

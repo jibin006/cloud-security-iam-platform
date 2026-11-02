@@ -59,6 +59,8 @@ def build_gateway() -> tuple[MCPGateway, str]:
 def discover_result() -> dict[str, Any]:
     return {
         "resultType": "complete",
+        "ttlMs": 30_000,
+        "cacheScope": "private",
         "protocolVersions": [PROTOCOL_VERSION],
         "capabilities": {"tools": {"listChanged": False}},
         "serverInfo": {

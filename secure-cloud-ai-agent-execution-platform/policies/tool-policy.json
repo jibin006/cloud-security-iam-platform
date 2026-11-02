@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "tools": {
+    "read_workspace_file": {
+      "roles": ["agent", "reviewer"],
+      "scopes": ["workspace:read"],
+      "required_arguments": ["path"],
+      "allowed_arguments": ["path"]
+    },
+    "propose_patch": {
+      "roles": ["engineer"],
+      "scopes": ["workspace:write"],
+      "required_arguments": ["path", "content", "expected_sha256"],
+      "allowed_arguments": ["path", "content", "expected_sha256"]
+    },
+    "get_runtime_status": {
+      "roles": ["agent", "reviewer", "engineer"],
+      "scopes": ["runtime:read"],
+      "required_arguments": [],
+      "allowed_arguments": []
+    }
+  }
+}

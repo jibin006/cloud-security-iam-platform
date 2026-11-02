@@ -40,8 +40,12 @@ class MCPGateway:
         self._audit = audit
         self._containment = containment
 
-    def list_tools(self) -> list[dict[str, Any]]:
-        return [
+    def list_tools(self, token: str, *, request_id: str | None = None) -> list[dict[str, Any]]:
+        identity = self._broker.verify(token, audience=AUDIENCE)
+        if self._containment.is_suspended(identity.subject):
+            raise AuthorizationError("Agent identity is suspended")
+        visible = self._policy.authorized_tool_names(identity)
+        tool_catalog = [
             {
                 "name": "read_workspace_file",
                 "description": "Read a UTF-8 file from approved workspace read roots.",
@@ -72,6 +76,7 @@ class MCPGateway:
                 "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
             },
         ]
+        return [tool for tool in tool_catalog if tool["name"] in visible]
 
     def call_tool(
         self,

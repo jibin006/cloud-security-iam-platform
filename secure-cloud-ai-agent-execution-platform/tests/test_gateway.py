@@ -73,10 +73,15 @@ def test_gateway_audit_integrity_is_reported(gateway, issue_agent_token):
     assert status["events"] == 1
 
 
-def test_gateway_budget_exhaustion_is_a_denial(gateway, issue_agent_token):
+def test_gateway_derives_budget_charge_from_request_payload(gateway, issue_agent_token):
     token = issue_agent_token()
-    first = gateway.call_tool(token, "read_workspace_file", {"path": "src/hello.py"}, estimated_tokens=90)
-    second = gateway.call_tool(token, "read_workspace_file", {"path": "src/hello.py"}, estimated_tokens=20)
-    assert first["isError"] is False
-    assert second["isError"] is True
-    assert "budget" in text(second).lower()
+    # Caller cannot under-report cost. A long path is charged from its serialized
+    # argument size before filesystem execution, even if the path later fails.
+    oversized_path = "src/" + ("x" * 500)
+    result = gateway.call_tool(
+        token,
+        "read_workspace_file",
+        {"path": oversized_path},
+    )
+    assert result["isError"] is True
+    assert "budget" in text(result).lower()

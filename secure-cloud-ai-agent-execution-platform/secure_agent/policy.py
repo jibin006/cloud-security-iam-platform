@@ -24,6 +24,18 @@ class ToolPolicy:
         with Path(path).open(encoding="utf-8") as handle:
             return cls(json.load(handle))
 
+    def authorized_tool_names(self, identity: AgentIdentity) -> set[str]:
+        """Return registered tools visible to this identity's current roles and scopes."""
+        visible: set[str] = set()
+        for name, rule in self._rules.items():
+            if not isinstance(rule, dict):
+                continue
+            allowed_roles = set(rule.get("roles", []))
+            required_scopes = set(rule.get("scopes", []))
+            if identity.roles.intersection(allowed_roles) and required_scopes.issubset(identity.scopes):
+                visible.add(name)
+        return visible
+
     def authorize(self, identity: AgentIdentity, tool_name: str, arguments: dict) -> None:
         if not isinstance(arguments, dict):
             raise AuthorizationError("Tool arguments must be a JSON object")

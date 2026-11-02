@@ -31,12 +31,11 @@ class MCPProtocolError(ValueError):
     """Raised for unsupported protocol versions or malformed MCP messages."""
 
 
-def build_gateway() -> tuple[MCPGateway, str]:
+def build_gateway_core() -> MCPGateway:
     secret = os.environ.get("AGENT_BROKER_SECRET", "")
-    token = os.environ.get("AGENT_IDENTITY_TOKEN", "")
     root = os.environ.get("AGENT_WORKSPACE", "./workspace")
-    if len(secret.encode()) < 32 or not token:
-        raise RuntimeError("Local adapter requires AGENT_BROKER_SECRET and AGENT_IDENTITY_TOKEN")
+    if len(secret.encode()) < 32:
+        raise RuntimeError("Gateway requires AGENT_BROKER_SECRET with at least 32 bytes")
     audit = AuditLog(os.environ.get("AGENT_AUDIT_PATH", "./audit/events.jsonl"))
     containment = ContainmentController(audit)
     gateway = MCPGateway(
@@ -47,7 +46,14 @@ def build_gateway() -> tuple[MCPGateway, str]:
         audit=audit,
         containment=containment,
     )
-    return gateway, token
+    return gateway
+
+
+def build_gateway() -> tuple[MCPGateway, str]:
+    token = os.environ.get("AGENT_IDENTITY_TOKEN", "")
+    if not token:
+        raise RuntimeError("Local stdio adapter requires AGENT_IDENTITY_TOKEN")
+    return build_gateway_core(), token
 
 
 def discover_result() -> dict[str, Any]:

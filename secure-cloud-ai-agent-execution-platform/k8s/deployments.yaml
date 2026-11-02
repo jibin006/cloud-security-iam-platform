@@ -1,0 +1,154 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-gateway
+  namespace: agent-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mcp-gateway
+  template:
+    metadata:
+      labels:
+        app: mcp-gateway
+    spec:
+      serviceAccountName: mcp-gateway
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gateway
+          image: ghcr.io/jibin006/secure-agent-execution-platform:REPLACE_WITH_IMMUTABLE_TAG
+          imagePullPolicy: IfNotPresent
+          command: ["uvicorn", "secure_agent.http_mcp_server:app", "--host", "0.0.0.0", "--port", "8080"]
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: AGENT_BROKER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: agent-gateway-signing
+                  key: signing-secret
+            - name: AGENT_WORKSPACE
+              value: /workspace
+            - name: AGENT_AUDIT_PATH
+              value: /var/log/agent/events.jsonl
+            - name: AGENT_TOOL_POLICY
+              value: /app/policies/tool-policy.json
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+            - name: audit
+              mountPath: /var/log/agent
+      volumes:
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: agent-workspace
+        - name: audit
+          emptyDir:
+            sizeLimit: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-gateway
+  namespace: agent-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: mcp-gateway
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: untrusted-agent-runtime
+  namespace: agent-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: untrusted-agent-runtime
+  template:
+    metadata:
+      labels:
+        app: untrusted-agent-runtime
+    spec:
+      serviceAccountName: agent-runtime
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: runtime-adapter
+          image: ghcr.io/jibin006/secure-agent-execution-platform:REPLACE_WITH_IMMUTABLE_TAG
+          imagePullPolicy: IfNotPresent
+          command: ["uvicorn", "secure_agent.agent_runtime_service:app", "--host", "0.0.0.0", "--port", "8081"]
+          ports:
+            - name: http
+              containerPort: 8081
+          env:
+            - name: MCP_GATEWAY_URL
+              value: http://mcp-gateway.agent-platform.svc.cluster.local:8080/mcp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: untrusted-agent-runtime
+  namespace: agent-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: untrusted-agent-runtime
+  ports:
+    - name: http
+      port: 8081
+      targetPort: http

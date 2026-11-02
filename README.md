@@ -3,14 +3,14 @@
 
 ## Overview
 
-Cloud environments often suffer from fragmented identity controls:
+This repository contains related AWS IAM security labs and prototypes. The components are independently implemented; this is **not yet a deployable, integrated IAM control plane**. The repository covers workload federation, cross-account access, and permission-boundary role vending. IAM drift detection is maintained separately in [IAM Drift Detector](https://github.com/jibin006/iam-drift-detector).\n\nCloud environments often suffer from fragmented identity controls:
 
 * Static credentials embedded in CI/CD systems
 * Inconsistent cross-account access patterns
 * Excessively privileged IAM roles
 * Limited visibility into permission drift and privilege escalation paths
 
-This project implements a cloud-native IAM platform that prevents, governs, and monitors identity access across AWS environments.
+The labs explore controls intended to constrain identity creation and cross-account access. Their security properties must be tested in an AWS sandbox before being treated as operational controls.
 
 The platform consists of four integrated security systems:
 
@@ -19,7 +19,7 @@ The platform consists of four integrated security systems:
 3. IAM Role Vending Machine
 4. IAM Drift Detection
 
-Together these controls establish secure identity boundaries, enforce least privilege, and continuously detect unauthorized changes.
+These components are not currently wired into one automated deployment or continuous-monitoring workflow.
 
 ---
 
@@ -112,7 +112,7 @@ Threats Addressed:
 
 ---
 
-### Component 4: IAM Drift Detection
+### Complementary Project: IAM Drift Detection (separate repository)
 
 Purpose:
 
@@ -154,13 +154,12 @@ A mature security platform requires both.
 
 ---
 
-## Security Outcomes
+## Intended Security Properties and Current Limits
 
-* Eliminated long-lived CI/CD credentials
-* Enforced least-privilege role creation
-* Standardized cross-account trust
-* Reduced privilege-escalation opportunities
-* Enabled continuous IAM governance
+* The OIDC example creates a repository-and-branch-scoped trust policy; the GitHub Actions workflow validates the short-lived role-assumption path when configured with an AWS role ARN.
+* The cross-account example requires an ExternalId, but the role permissions and caller identity still require environment-specific review.
+* The role-vending Lambda is a prototype. Its requested-action/resource policy model and its own execution-role permissions need further hardening before production use.
+* IAM drift detection is implemented separately; it is not deployed or integrated by this repository.
 
 ---
 
@@ -171,3 +170,16 @@ A mature security platform requires both.
 * Temporary Agent Permissions
 * AI Agent Authorization Controls
 * Risk-Based Access Decisions
+
+
+## Local Validation
+
+The validator tests use synthetic input and do not call AWS:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest -q tests/
+python -m py_compile build-1.3-permission-boundary-vending/lambda/*.py
+```
+
+The OIDC workflow is restricted to pushes to `main`; it requires an `AWS_ROLE_ARN` repository secret and a matching AWS trust policy. Pull requests run offline validation only and do not receive `id-token: write`.

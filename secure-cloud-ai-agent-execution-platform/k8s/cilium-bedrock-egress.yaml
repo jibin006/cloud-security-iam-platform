@@ -1,0 +1,18 @@
+# Optional policy for a separately deployed inference-router workload.
+# Requires Cilium and a model endpoint hostname configured for the target region.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: inference-router-bedrock-only
+  namespace: agent-platform
+spec:
+  endpointSelector:
+    matchLabels:
+      app: inference-router
+  egress:
+    - toFQDNs:
+        - matchName: bedrock-runtime.us-east-1.amazonaws.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

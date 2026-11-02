@@ -100,6 +100,8 @@ class IdentityBroker:
         audience: str,
         required_scopes: set[str] | frozenset[str] = frozenset(),
     ) -> AgentIdentity:
+        if not isinstance(token, str):
+            raise IdentityError("Malformed agent identity token")
         try:
             header_part, payload_part, signature_part = token.split(".")
             signing_input = f"{header_part}.{payload_part}"
@@ -118,6 +120,8 @@ class IdentityBroker:
 
         if header != {"alg": "HS256", "typ": "SAT"}:
             raise IdentityError("Unsupported identity token header")
+        if not isinstance(payload, dict):
+            raise IdentityError("Malformed identity token payload")
         if payload.get("iss") != self.issuer:
             raise IdentityError("Untrusted identity issuer")
         if payload.get("aud") != audience:
@@ -128,7 +132,12 @@ class IdentityBroker:
         expires_at = payload.get("exp")
         subject = payload.get("sub")
         token_id = payload.get("jti")
-        if not isinstance(issued_at, int) or not isinstance(expires_at, int):
+        if (
+            not isinstance(issued_at, int)
+            or isinstance(issued_at, bool)
+            or not isinstance(expires_at, int)
+            or isinstance(expires_at, bool)
+        ):
             raise IdentityError("Invalid token time claims")
         if not isinstance(subject, str) or not subject or not isinstance(token_id, str):
             raise IdentityError("Invalid token subject or token identifier")

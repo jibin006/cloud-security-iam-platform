@@ -1,6 +1,8 @@
 # cross_account_roles.py
 import boto3
 import json
+import os
+from botocore.exceptions import ClientError
 from typing import Optional
 
 def create_cross_account_role(
@@ -72,7 +74,15 @@ def create_cross_account_role(
         
     except iam.exceptions.EntityAlreadyExistsException:
         role = iam.get_role(RoleName=role_name)
-        return role['Role']['Arn']
+        existing_trust = role["Role"].get("AssumeRolePolicyDocument", {})
+        if isinstance(existing_trust, str):
+            existing_trust = json.loads(existing_trust)
+        if existing_trust != trust_policy:
+            raise RuntimeError(
+                f"Role {role_name} already exists with a different trust policy. "
+                "Refusing to treat the existing role as securely configured."
+            )
+        return role["Role"]["Arn"]
 
 
 def assume_cross_account_role(
@@ -154,7 +164,7 @@ def demonstrate_confused_deputy(
             # No ExternalId - should be rejected
         )
         print("ERROR: Role assumed WITHOUT external ID - trust policy is misconfigured")
-    except sts.exceptions.ClientError as e:
+    except ClientError as e:
         if "AccessDenied" in str(e):
             print("CORRECT: Role assumption rejected without external ID")
             print(f"Error: {e.response['Error']['Message']}")
@@ -226,22 +236,31 @@ def create_session_scoped_client(
     return scoped_session
 
 if __name__ == "__main__":
+    required = ("WORKLOAD_ACCOUNT_ID", "SECURITY_ACCOUNT_ID", "CROSS_ACCOUNT_EXTERNAL_ID")
+    missing = [name for name in required if not os.environ.get(name)]
+    if missing:
+        raise SystemExit(
+            "Missing required environment variables: " + ", ".join(missing)
+        )
 
-    WORKLOAD_ACCOUNT_ID = "668798317441"
-    SECURITY_ACCOUNT_ID = "980819806161"
+    workload_account_id = os.environ["WORKLOAD_ACCOUNT_ID"]
+    security_account_id = os.environ["SECURITY_ACCOUNT_ID"]
+    external_id = os.environ["CROSS_ACCOUNT_EXTERNAL_ID"]
+    workload_profile = os.environ.get("AWS_WORKLOAD_PROFILE", "security-development")
+    security_profile = os.environ.get("AWS_SECURITY_PROFILE", "security-account")
+    role_name = os.environ.get("CROSS_ACCOUNT_ROLE_NAME", "CrossAccountSecurityAudit")
 
     role_arn = create_cross_account_role(
-        workload_account_id=WORKLOAD_ACCOUNT_ID,
-        security_account_id=SECURITY_ACCOUNT_ID,
-        role_name="CrossAccountSecurityAudit",
-        external_id="security-lab-2026",
-        workload_profile="security-development"
+        workload_account_id=workload_account_id,
+        security_account_id=security_account_id,
+        role_name=role_name,
+        external_id=external_id,
+        workload_profile=workload_profile,
     )
-
     print(f"Created role: {role_arn}")
 
     demonstrate_confused_deputy(
-        workload_account_id=WORKLOAD_ACCOUNT_ID,
-        role_name="CrossAccountSecurityAudit",
-        security_profile="security-account"
+        workload_account_id=workload_account_id,
+        role_name=role_name,
+        security_profile=security_profile,
     )
